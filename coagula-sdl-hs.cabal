@@ -1,4 +1,4 @@
-cabal-version:      3.0
+cabal-version:      3.12
 -- The cabal-version field refers to the version of the .cabal specification,
 -- and can be different from the cabal-install (the tool) version and the
 -- Cabal (the library) version you are using. As such, the Cabal (the library)
@@ -53,29 +53,7 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
-
-library
-    -- Import common warning flags.
-    import:           warnings
-
-    -- Modules exported by the library.
-    exposed-modules:  MyLib
-
-    -- Modules included in this library but not exported.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.21.0.0
-
-    -- Directories containing source files.
-    hs-source-dirs:   src
-
-    -- Base language which the package is written in.
-    default-language: GHC2024
-
+    
 executable coagula-sdl-hs
     -- Import common warning flags.
     import:           warnings
@@ -84,18 +62,21 @@ executable coagula-sdl-hs
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules: SDL
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.21.0.0,
-        coagula-sdl-hs
+        base ^>=4.21.0.0
 
     -- Directories containing source files.
     hs-source-dirs:   app
+
+    extra-libraries: SDL3
+
+    ghc-options: -optl-Wl,-rpath,/usr/local/lib
 
     -- Base language which the package is written in.
     default-language: GHC2024

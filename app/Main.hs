@@ -1,9 +1,8 @@
 module Main where
 
-import qualified MyLib (someFunc)
+import qualified SDL (sdlInit)
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  putStrLn "Bye"
-  MyLib.someFunc
+ ok <- SDL.sdlInit
+ print ok
