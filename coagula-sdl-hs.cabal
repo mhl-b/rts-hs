@@ -62,7 +62,11 @@ executable coagula-sdl-hs
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: SDL
+    other-modules: 
+        SDL.Prelude
+        SDL.FFI
+        SDL.Events
+        SDL.Init
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -74,9 +78,22 @@ executable coagula-sdl-hs
     -- Directories containing source files.
     hs-source-dirs:   app
 
-    extra-libraries: SDL3
+    include-dirs:
+        vendored/SDL/include
 
-    ghc-options: -optl-Wl,-rpath,/usr/local/lib
+    includes:
+        SDL3/SDL.h
+    
+    extra-lib-dirs:
+        vendored/SDL/build
+
+    extra-libraries-static:
+        SDL3
+    
+    extra-libraries:
+        SDL3
+
+    ghc-options: -optl-W
 
     -- Base language which the package is written in.
     default-language: GHC2024
@@ -107,3 +124,5 @@ test-suite coagula-sdl-hs-test
     build-depends:
         base ^>=4.21.0.0,
         coagula-sdl-hs
+
+

@@ -11,7 +11,8 @@
         {
             "label": "run",
             "type": "shell",
-            "command": "cabal run"
+            "command": "LD_LIBRARY_PATH=vendored/SDL/build cabal run",
+            "problemMatcher": []
         }
     ]
 }
