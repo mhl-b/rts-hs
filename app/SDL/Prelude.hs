@@ -1,11 +1,9 @@
 module SDL.Prelude where
 
 import Foreign
-import Foreign.C
+import Foreign.C (CChar, newCString, peekCString)
 import Foreign.C.ConstPtr
-import SDL.Events
 import SDL.FFI
-import SDL.Init
 
 stringToConstPtr :: String -> IO (ConstPtr CChar)
 stringToConstPtr s = do
@@ -25,7 +23,7 @@ catchErr = Left <$> sdlErr
 sdlInit :: IO (Either SDLErr ())
 sdlInit = do
         ok <- _init initFlags
-        if ok then return (Right ()) else catchErr
+        if toBool ok then return (Right ()) else catchErr
 
 sdlQuit :: IO ()
 sdlQuit = do _quit
@@ -57,7 +55,7 @@ sdlPollEvent = do
         alloca
                 ( \ptr -> do
                         ok <- _poll_event ptr
-                        if ok
+                        if toBool ok
                                 then do
                                         evt <- peek ptr
                                         return (Just evt)
@@ -65,23 +63,14 @@ sdlPollEvent = do
                                         return Nothing
                 )
 
-data FPS = FPS {past :: Int, now :: Int, t0 :: Tick} deriving (Show)
-
-emptyFPS :: FPS
-emptyFPS = FPS{past = 0, now = 0, t0 = 0}
-
-updateFPS :: FPS -> Tick -> FPS
-updateFPS FPS{past, now, t0} t1 =
-        if t1 - t0 >= 1000
-                then FPS{past = now, now = 1, t0 = t1}
-                else FPS{past, now = now + 1, t0}
-
-type Tick = Int64
-
-type TickNS = Int64
+type Tick = Word64
 
 getTick :: IO Tick
-getTick = do fromIntegral <$> _get_ticks
+getTick = fromIntegral <$> _get_ticks_ns
 
-getTickNS :: IO TickNS
-getTickNS = do fromIntegral <$> _get_ticks_ns
+data V2 s = V2 !s !s deriving (Eq, Show)
+
+type FPoint = V2 Float
+
+-- sdlRenderLine :: SDLRenderer -> FPoint -> FPoint -> IO (Maybe SDLErr)
+-- sdlRenderLine r FPoint x1 y1 FPoint x2 y2 = 

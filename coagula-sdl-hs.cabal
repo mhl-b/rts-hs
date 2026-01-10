@@ -53,7 +53,7 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
-    
+
 executable coagula-sdl-hs
     -- Import common warning flags.
     import:           warnings
@@ -62,36 +62,34 @@ executable coagula-sdl-hs
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: 
+    other-modules:
         SDL.Prelude
         SDL.FFI
-        SDL.Events
-        SDL.Init
+
+    default-extensions: DuplicateRecordFields
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions:
-        NamedFieldPuns
-        OverloadedRecordDot
+        -- NamedFieldPuns
+        -- OverloadedRecordDot
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.0.0
+        base ^>=4.18.0.0,
+        stm ^>=2.5.3.1
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     include-dirs:
-        vendored/SDL/include
 
     includes:
         SDL3/SDL.h
-    
+
     extra-lib-dirs:
-        vendored/SDL/build
 
     extra-libraries-static:
-        SDL3
-    
+
     extra-libraries:
         SDL3
 
@@ -126,5 +124,3 @@ test-suite coagula-sdl-hs-test
     build-depends:
         base ^>=4.18.0.0,
         coagula-sdl-hs
-
-

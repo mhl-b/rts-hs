@@ -1,7 +1,6 @@
 module Main where
 
-import Control.Monad (unless, when)
-import SDL.Events
+import Control.Concurrent.STM
 import SDL.FFI
 import SDL.Prelude
 import Prelude
@@ -11,37 +10,55 @@ main = do
         _ <- sdlInit
         wr <- sdlWindow "coagula" 800 600 0
         case wr of
-                Left err -> do
-                        print err
-                        sdlQuit
+                Left err -> print err >> sdlQuit
                 Right w -> do
-                        r <- sdlRenderer w
-                        _ <- renderLoop r emptyFPS
-                        sdlQuit
+                  tick <- getTick
+                  eventsChan <- newTChanIO
+                  drawChan <- newTChanIO
+                  renderer <- sdlRenderer w
+                  renderLoop RenderFrame{tick, renderer, eventsBuffer = [], eventsChan, drawChan}
+                  sdlQuit
 
 eventsLoop :: [SDLEvent] -> IO [SDLEvent]
 eventsLoop es = do
         m <- sdlPollEvent
         case m of
                 Nothing -> return es
-                Just e -> eventsLoop (es ++ [e])
+                Just e -> eventsLoop (e : es)
 
-renderLoop :: SDLRenderer -> FPS -> IO ()
-renderLoop r fps@(FPS{t0}) = do
-        tick' <- getTick
-        let fps' = updateFPS fps tick'
-        es <- eventsLoop []
-        _ <- maybePrint t0 tick' fps' es
-        let isQuit = Quit `elem` es
+data RenderFrame = RenderFrame
+        { tick :: Tick
+        , renderer :: SDLRenderer
+        , eventsBuffer :: [SDLEvent]
+        , eventsChan :: TChan [SDLEvent]
+        , drawChan :: TChan [Point]
+        }
+
+renderLoop :: RenderFrame -> IO ()
+renderLoop rf@RenderFrame{renderer, eventsBuffer, eventsChan} = do
+        eventsBuffer' <- eventsLoop eventsBuffer
+        let isQuit = Quit `elem` eventsBuffer'
         if isQuit
                 then return ()
                 else do
-                        _ <- sdlRenderClear r
-                        _ <- sdlRenderPresent r
-                        renderLoop r fps'
+                        sdlRenderClear renderer
+                        sdlRenderPresent renderer
+                        renderLoop rf{eventsBuffer = eventsBuffer'}
 
-maybePrint :: Tick -> Tick -> FPS -> [SDLEvent] -> IO ()
-maybePrint t0 t1 fps events = do
-        when (t1 - t0 >= 1000) $ do
-                print fps
-                print events
+type Point = (Int, Int)
+
+data ComputeFrame = ComputeFrame
+        { tick :: Tick
+        , eventsChan :: TChan [SDLEvent]
+        , drawChan :: TChan [Point]
+        , n :: Int
+        }
+
+triangle :: [Point]
+triangle = [(100,100), (300, 100), (200, 300)]
+
+rectangle :: [Point]
+rectangle = [(100,100), (300, 100), (300, 300), (100, 300)]
+
+-- computeLoop :: ComputeFrame -> IO ()
+-- computeLoop cf@ComputeFrame{tick, eventsChan, drawChan, n} = do return ()
