@@ -59,3 +59,5 @@ foreign import capi "SDL3/SDL.h SDL_GetTicks" _get_ticks :: IO CULLong
 foreign import capi "SDL3/SDL.h SDL_GetTicksNS" _get_ticks_ns :: IO CULLong
 
 foreign import capi "SDL3/SDL.h SDL_RenderLine" _render_line :: SDLRenderer -> CFloat -> CFloat -> CFloat -> CFloat -> IO CBool
+
+foreign import capi "SDL3/SDL.h SDL_SetRenderDrawColor" _set_render_draw_color :: SDLRenderer -> CChar -> CChar -> CChar -> CChar -> IO CBool

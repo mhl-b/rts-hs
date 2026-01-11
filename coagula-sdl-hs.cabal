@@ -1,4 +1,4 @@
-cabal-version:      3.12
+cabal-version:      3.8
 -- The cabal-version field refers to the version of the .cabal specification,
 -- and can be different from the cabal-install (the tool) version and the
 -- Cabal (the library) version you are using. As such, the Cabal (the library)
@@ -66,7 +66,10 @@ executable coagula-sdl-hs
         SDL.Prelude
         SDL.FFI
 
-    default-extensions: DuplicateRecordFields
+    default-extensions:
+        DuplicateRecordFields,
+        DeriveGeneric,
+        DeriveFunctor
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions:
@@ -93,7 +96,7 @@ executable coagula-sdl-hs
     extra-libraries:
         SDL3
 
-    ghc-options: -optl-W
+    ghc-options: -optl-W -threaded
 
     -- Base language which the package is written in.
     default-language: GHC2021
