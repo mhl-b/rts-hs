@@ -20,11 +20,13 @@ foreign import capi "SDL3/SDL.h SDL_GetError" _error :: IO (ConstPtr CChar)
 
 data Raw
 
-newtype SDLWindow = SDLWindow (Ptr Raw)
+type SDLWindow = Ptr Raw
 
-newtype SDLRenderer = SDLRenderer (Ptr Raw)
+type SDLWindowFlags = Word64
 
-foreign import capi "SDL3/SDL.h SDL_CreateWindow" _create_window :: ConstPtr CChar -> CInt -> CInt -> CUInt -> IO (Ptr Raw)
+type SDLRenderer = Ptr Raw
+
+foreign import capi "SDL3/SDL.h SDL_CreateWindow" _create_window :: ConstPtr CChar -> CInt -> CInt -> CULong -> IO SDLWindow
 
 foreign import capi "SDL3/SDL.h SDL_GetRenderer" _get_renderer :: SDLWindow -> IO SDLRenderer
 
