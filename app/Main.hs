@@ -11,18 +11,15 @@ import Prelude
 main :: IO ()
 main = do
   _ <- sdlInit
-  wr <- sdlWindow "coagula" 800 600 0
-  case wr of
-    Left err -> print err >> sdlQuit
-    Right window -> do
-      tick <- getTick
-      let fps = newFPS tick
-      eventsChan <- newTChanIO
-      computeChan <- newTChanIO
-      renderer <- sdlRenderer window
-      _ <- forkOS $ computeLoop ComputeFrame {cfps = fps, eventsChan, computeChan, state = Triangle}
-      renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, state = Triangle}
-      sdlQuit
+  window <- sdlWindow "coagula" 800 600 0
+  tick <- getTick
+  let fps = newFPS tick
+  eventsChan <- newTChanIO
+  computeChan <- newTChanIO
+  renderer <- sdlRenderer window
+  _ <- forkOS $ computeLoop ComputeFrame {cfps = fps, eventsChan, computeChan, state = Triangle}
+  renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, state = Triangle}
+  sdlQuit
 
 pollEvents :: IO [SDLEvent]
 pollEvents = go []
@@ -30,7 +27,7 @@ pollEvents = go []
     go evts = do
       m <- sdlPollEvent
       case m of
-        Nothing -> return (reverse evts)
+        Nothing -> return evts
         Just evt -> go (evt : evts)
 
 data RenderFrame = RenderFrame
