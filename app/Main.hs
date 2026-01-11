@@ -2,8 +2,10 @@ module Main where
 
 import Control.Concurrent
 import Control.Concurrent.STM
+import Data.Maybe (fromMaybe)
 import SDL.FFI
 import SDL.Prelude
+import Text.Printf (printf)
 import Prelude
 
 main :: IO ()
@@ -14,55 +16,61 @@ main = do
     Left err -> print err >> sdlQuit
     Right window -> do
       tick <- getTick
+      let fps = newFPS tick
       eventsChan <- newTChanIO
-      drawChan <- newTChanIO
+      computeChan <- newTChanIO
       renderer <- sdlRenderer window
-      _ <- forkOS $ computeLoop ComputeFrame {tick, eventsChan, drawChan, state = Triangle}
-      renderLoop RenderFrame {tick, renderer, eventsBuffer = [], eventsChan, drawChan}
+      _ <- forkOS $ computeLoop ComputeFrame {cfps = fps, eventsChan, computeChan, state = Triangle}
+      renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, state = Triangle}
       sdlQuit
 
-eventsLoop :: [SDLEvent] -> IO [SDLEvent]
-eventsLoop es = do
-  m <- sdlPollEvent
-  case m of
-    Nothing -> return es
-    Just e -> eventsLoop (e : es)
+pollEvents :: IO [SDLEvent]
+pollEvents = go []
+  where
+    go evts = do
+      m <- sdlPollEvent
+      case m of
+        Nothing -> return (reverse evts)
+        Just evt -> go (evt : evts)
 
 data RenderFrame = RenderFrame
-  { tick :: Tick,
+  { rfps :: FPS,
     renderer :: SDLRenderer,
-    eventsBuffer :: [SDLEvent],
     eventsChan :: TChan [SDLEvent],
-    drawChan :: TChan [FPoint]
+    computeChan :: TChan ComputeState,
+    state :: ComputeState
   }
 
 renderLoop :: RenderFrame -> IO ()
-renderLoop rf@RenderFrame {renderer, eventsBuffer, eventsChan, drawChan} = do
-  eventsBuffer' <- eventsLoop eventsBuffer
-  let isQuit = Quit `elem` eventsBuffer'
-  if isQuit
+renderLoop rf@RenderFrame {rfps, renderer, eventsChan, computeChan, state} = do
+  fps' <- updateAndPrintFps "render" rfps
+  events <- pollEvents
+  if Quit `elem` events
     then return ()
     else do
-      atomically $ do writeTChan eventsChan eventsBuffer'
-      m <- atomically $ do tryReadTChan drawChan
-      case m of
-        Nothing -> renderLoop rf {eventsBuffer = []}
-        Just shape -> do
-          sdlRenderClear renderer
-          sdlSetDrawColor renderer 0xFF 0xFF 0xFF 0xFF
-          drawShape renderer shape
-          sdlSetDrawColor renderer 0x00 0x00 0x00 0x00
-          sdlRenderPresent renderer
-          renderLoop rf {eventsBuffer = []}
+      atomically $ do writeTChan eventsChan events
+      m <- atomically $ do tryReadTChan computeChan
+      let state' = fromMaybe state m
+      sdlRenderClear renderer
+      sdlSetDrawColor renderer 0xFF 0xFF 0xFF 0xFF
+      drawShape renderer (computeStateToPoints state')
+      sdlSetDrawColor renderer 0x00 0x00 0x00 0x00
+      sdlRenderPresent renderer
+      renderLoop rf {rfps = fps', state = state'}
 
 data ComputeFrame = ComputeFrame
-  { tick :: Tick,
+  { cfps :: FPS,
     eventsChan :: TChan [SDLEvent],
-    drawChan :: TChan [FPoint],
+    computeChan :: TChan ComputeState,
     state :: ComputeState
   }
 
 data ComputeState = Triangle | Rectangle
+
+computeStateToPoints :: ComputeState -> [FPoint]
+computeStateToPoints state = case state of
+  Triangle -> triangle
+  Rectangle -> rectangle
 
 triangle :: [FPoint]
 triangle = [V2 100 100, V2 300 100, V2 200 300]
@@ -88,17 +96,32 @@ drainTChan chan = atomically $ drainTChan' chan []
           drainTChan' ch (item : acc)
 
 computeLoop :: ComputeFrame -> IO ()
-computeLoop cf@ComputeFrame {tick, eventsChan, drawChan, state} = do
+computeLoop cf@ComputeFrame {cfps, eventsChan, computeChan, state} = do
   threadDelay 100_000
+  fps' <- updateAndPrintFps "compute" cfps
   evs <- drainTChan eventsChan
   let evs' = concatMap (filter (== MouseDown)) evs
-  print evs'
   if not (null evs')
     then case state of
       Triangle -> do
-        atomically $ writeTChan drawChan triangle
-        computeLoop cf {state = Rectangle}
+        atomically $ writeTChan computeChan Triangle
+        computeLoop cf {cfps = fps', state = Rectangle}
       Rectangle -> do
-        atomically $ writeTChan drawChan rectangle
-        computeLoop cf {state = Triangle}
-    else computeLoop cf
+        atomically $ writeTChan computeChan Rectangle
+        computeLoop cf {cfps = fps', state = Triangle}
+    else computeLoop cf {cfps = fps'}
+
+data FPS = FPS {frameStart :: Tick, totalFrames :: Int}
+
+newFPS :: Tick -> FPS
+newFPS frameStart = FPS {frameStart, totalFrames = 0}
+
+updateAndPrintFps :: String -> FPS -> IO FPS
+updateAndPrintFps prefix FPS {frameStart, totalFrames} = do
+  tick <- getTick
+  if tick - frameStart >= 1_000_000_000
+    then do
+      printf "%s fps: %d\n" prefix (totalFrames + 1)
+      return FPS {frameStart = tick, totalFrames = 0}
+    else
+      return FPS {frameStart, totalFrames = totalFrames + 1}

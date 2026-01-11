@@ -73,8 +73,6 @@ executable coagula-sdl-hs
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions:
-        -- NamedFieldPuns
-        -- OverloadedRecordDot
 
     -- Other library packages from which modules are imported.
     build-depends:
