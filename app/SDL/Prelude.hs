@@ -1,5 +1,6 @@
 module SDL.Prelude where
 
+import Control.Monad (unless)
 import Data.Word (Word64, Word8)
 import Foreign (Storable (peek), alloca, toBool)
 import Foreign.C (newCString, peekCString)
@@ -17,31 +18,20 @@ type SDLErr = String
 sdlErr :: IO SDLErr
 sdlErr = _error >>= (peekCString . unConstPtr)
 
-printErrorAndQuit :: String -> IO a
-printErrorAndQuit err = print err >> sdlQuit >> exitWith (ExitFailure 1)
+printErrorAndQuit :: IO a
+printErrorAndQuit = _error >>= print >> sdlQuit >> exitWith (ExitFailure 1)
 
-checkNullPtr :: Ptr a -> IO (Either SDLErr (Ptr a))
-checkNullPtr ptr = if ptr == nullPtr then Left <$> sdlErr else return (Right ptr)
+handleBoolErr :: Bool -> IO ()
+handleBoolErr ok = unless ok printErrorAndQuit
 
-maybeErr :: CBool -> IO (Maybe SDLErr)
-maybeErr ok = if toBool ok then return Nothing else Just <$> sdlErr
+handleCBoolErr :: CBool -> IO ()
+handleCBoolErr cOk = handleBoolErr (toBool cOk)
 
-maybeDie :: Maybe SDLErr -> IO ()
-maybeDie (Just err) = printErrorAndQuit err
-maybeDie Nothing = return ()
-
-eitherDie :: Either SDLErr (Ptr a) -> IO (Ptr a)
-eitherDie (Left err) = printErrorAndQuit err
-eitherDie (Right ptr) = return ptr
-
-dieOnFalse :: CBool -> IO ()
-dieOnFalse ok = maybeErr ok >>= maybeDie
-
-dieOnNull :: Ptr a -> IO (Ptr a)
-dieOnNull ptr = checkNullPtr ptr >>= eitherDie
+handlePtrErr :: Ptr a -> IO (Ptr a)
+handlePtrErr ptr = if ptr == nullPtr then printErrorAndQuit else return ptr
 
 sdlInit :: IO ()
-sdlInit = _init initFlags >>= dieOnFalse
+sdlInit = _init initFlags >>= handleCBoolErr
 
 sdlQuit :: IO ()
 sdlQuit = _quit
@@ -50,19 +40,19 @@ sdlWindow :: String -> Int -> Int -> Word64 -> IO SDLWindow
 sdlWindow name width height flags = do
   cname <- stringToConstPtr name
   ptr <- _create_window cname (fromIntegral width) (fromIntegral height) (fromIntegral flags)
-  dieOnNull ptr
+  handlePtrErr ptr
 
 sdlRenderer :: SDLWindow -> IO SDLRenderer
-sdlRenderer w = _create_renderer w (ConstPtr nullPtr) >>= dieOnNull
+sdlRenderer w = _create_renderer w (ConstPtr nullPtr) >>= handlePtrErr
 
 sdlVSync :: SDLRenderer -> IO ()
-sdlVSync r = _set_renderer_vsync r 1 >>= dieOnFalse
+sdlVSync r = _set_renderer_vsync r 1 >>= handleCBoolErr
 
 sdlRenderClear :: SDLRenderer -> IO ()
-sdlRenderClear r = _renderer_clear r >>= dieOnFalse
+sdlRenderClear r = _renderer_clear r >>= handleCBoolErr
 
 sdlRenderPresent :: SDLRenderer -> IO ()
-sdlRenderPresent r = _renderer_present r >>= dieOnFalse
+sdlRenderPresent r = _renderer_present r >>= handleCBoolErr
 
 sdlPollEvent :: IO (Maybe SDLEvent)
 sdlPollEvent = alloca $ \ptr -> do
@@ -82,7 +72,7 @@ sdlSetDrawColor rend r g b a =
       g' = fromIntegral g
       b' = fromIntegral b
       a' = fromIntegral a
-   in _set_render_draw_color rend r' g' b' a' >>= dieOnFalse
+   in _set_render_draw_color rend r' g' b' a' >>= handleCBoolErr
 
 data V2 s = V2 !s !s deriving (Eq, Show, Functor)
 
@@ -94,4 +84,4 @@ sdlRenderLine :: SDLRenderer -> FPoint -> FPoint -> IO ()
 sdlRenderLine r p1 p2 =
   let (V2 x1 y1) = fmap realToFrac p1
       (V2 x2 y2) = fmap realToFrac p2
-   in _render_line r x1 y1 x2 y2 >>= dieOnFalse
+   in _render_line r x1 y1 x2 y2 >>= handleCBoolErr
