@@ -82,6 +82,8 @@ executable coagula-sdl-hs
     -- Directories containing source files.
     hs-source-dirs:   app
 
+    data-files: data/images/*.png
+
     include-dirs:
 
     includes:

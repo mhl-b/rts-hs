@@ -7,6 +7,7 @@ import Foreign.C (newCString, peekCString)
 import Foreign.C.ConstPtr
 import Foreign.C.Types
 import Foreign.Ptr
+import Foreign.Storable (poke)
 import SDL.FFI
 import System.Exit (ExitCode (ExitFailure), exitWith)
 
@@ -43,10 +44,10 @@ sdlWindow name width height flags = do
   handlePtrErr ptr
 
 sdlRenderer :: SDLWindow -> IO SDLRenderer
-sdlRenderer w = _create_renderer w (ConstPtr nullPtr) >>= handlePtrErr
-
-sdlVSync :: SDLRenderer -> IO ()
-sdlVSync r = _set_renderer_vsync r 1 >>= handleCBoolErr
+sdlRenderer window = do
+  renderer <- _create_renderer window (ConstPtr nullPtr) >>= handlePtrErr
+  _ <- _set_renderer_vsync renderer 1 >>= handleCBoolErr
+  return renderer
 
 sdlRenderClear :: SDLRenderer -> IO ()
 sdlRenderClear r = _renderer_clear r >>= handleCBoolErr
@@ -74,6 +75,12 @@ sdlSetDrawColor rend r g b a =
       a' = fromIntegral a
    in _set_render_draw_color rend r' g' b' a' >>= handleCBoolErr
 
+sdlSetDrawColorBlack :: SDLRenderer -> IO ()
+sdlSetDrawColorBlack r = sdlSetDrawColor r 0x00 0x00 0x00 0x00
+
+sdlSetDrawColorWhite :: SDLRenderer -> IO ()
+sdlSetDrawColorWhite r = sdlSetDrawColor r 0xFF 0xFF 0xFF 0x00
+
 data V2 s = V2 !s !s deriving (Eq, Show, Functor)
 
 type FPoint = V2 Float
@@ -85,3 +92,22 @@ sdlRenderLine r p1 p2 =
   let (V2 x1 y1) = fmap realToFrac p1
       (V2 x2 y2) = fmap realToFrac p2
    in _render_line r x1 y1 x2 y2 >>= handleCBoolErr
+
+sdlLoadPngTexture :: SDLRenderer -> String -> IO SDLTexture
+sdlLoadPngTexture renderer path = do
+  surface <- stringToConstPtr path >>= _load_png >>= handlePtrErr
+  texture <- _surface_to_texture renderer surface >>= handlePtrErr
+  _ <- _destroy_surface surface
+  return texture
+
+sdlFRect :: Float -> Float -> Float -> Float -> SDLFRect
+sdlFRect x y w h = SDLFRect {x = CFloat x, y = CFloat y, w = CFloat w, h = CFloat h}
+
+sdlRenderTexture :: SDLRenderer -> SDLTexture -> SDLFRect -> SDLFRect -> IO ()
+sdlRenderTexture renderer texture src dst =
+  alloca $ \srcPtr -> do
+    alloca $ \dstPtr -> do
+      poke srcPtr src
+      poke dstPtr dst
+      _ <- _render_texture renderer texture (ConstPtr srcPtr) (ConstPtr dstPtr) >>= handleCBoolErr
+      return ()

@@ -48,12 +48,12 @@ instance Storable SDLEvent where
 
     peek ptr = do
         etype :: CUInt <- (#peek SDL_Event, type) ptr
-        return $ case etype of 
+        return $ case etype of
             (#const SDL_EVENT_KEY_DOWN) -> KeyDown
             (#const SDL_EVENT_MOUSE_BUTTON_DOWN) -> MouseDown
             (#const SDL_EVENT_QUIT) -> Quit
             _ -> Other
-    
+
     poke _ _ = undefined
 
 foreign import capi "SDL3/SDL.h SDL_GetTicks" _get_ticks :: IO CULLong
@@ -63,3 +63,39 @@ foreign import capi "SDL3/SDL.h SDL_GetTicksNS" _get_ticks_ns :: IO CULLong
 foreign import capi "SDL3/SDL.h SDL_RenderLine" _render_line :: SDLRenderer -> CFloat -> CFloat -> CFloat -> CFloat -> IO CBool
 
 foreign import capi "SDL3/SDL.h SDL_SetRenderDrawColor" _set_render_draw_color :: SDLRenderer -> CChar -> CChar -> CChar -> CChar -> IO CBool
+
+type SDLSurface = Ptr Raw
+
+foreign import capi "SDL3/SDL.h SDL_LoadPNG" _load_png :: ConstPtr CChar -> IO SDLSurface
+
+type SDLTexture = Ptr Raw
+
+foreign import capi "SDL3/SDL.h SDL_CreateTextureFromSurface" _surface_to_texture :: SDLRenderer -> SDLSurface -> IO SDLTexture
+
+foreign import capi "SDL3/SDL.h SDL_DestroySurface" _destroy_surface :: SDLSurface -> IO ()
+
+data SDLFRect = SDLFRect
+  { x :: CFloat
+  , y :: CFloat
+  , w :: CFloat
+  , h :: CFloat
+  } deriving (Show, Eq)
+
+instance Storable SDLFRect where
+  sizeOf _ = #{size SDL_FRect}
+  alignment _ = #{alignment SDL_FRect}
+
+  peek ptr = do
+    x <- #{peek SDL_FRect, x} ptr
+    y <- #{peek SDL_FRect, y} ptr
+    w <- #{peek SDL_FRect, w} ptr
+    h <- #{peek SDL_FRect, h} ptr
+    return $ SDLFRect x y w h
+
+  poke ptr (SDLFRect x y w h) = do
+    #{poke SDL_FRect, x} ptr x
+    #{poke SDL_FRect, y} ptr y
+    #{poke SDL_FRect, w} ptr w
+    #{poke SDL_FRect, h} ptr h
+
+foreign import capi "SDL3/SDL.h SDL_RenderTexture" _render_texture :: SDLRenderer -> SDLTexture -> ConstPtr SDLFRect -> ConstPtr SDLFRect -> IO CBool

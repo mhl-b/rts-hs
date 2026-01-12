@@ -17,8 +17,10 @@ main = do
   eventsChan <- newTChanIO
   computeChan <- newTChanIO
   renderer <- sdlRenderer window
+  sdlSetDrawColorWhite renderer
+  texture <- sdlLoadPngTexture renderer "data/images/zluk.png"
   _ <- forkOS $ computeLoop ComputeFrame {cfps = fps, eventsChan, computeChan, state = Triangle}
-  renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, state = Triangle}
+  renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, texture, state = Triangle}
   sdlQuit
 
 pollEvents :: IO [SDLEvent]
@@ -35,11 +37,22 @@ data RenderFrame = RenderFrame
     renderer :: SDLRenderer,
     eventsChan :: TChan [SDLEvent],
     computeChan :: TChan ComputeState,
+    texture :: SDLTexture,
     state :: ComputeState
   }
 
+animationAtlasPosition :: Tick -> SDLFRect
+animationAtlasPosition tick =
+  let frame = (tick `div` 250_000_000) `mod` 3
+      x = 64 * fromIntegral frame
+      y = 0
+      w = 64
+      h = 64
+   in sdlFRect x y w h
+
 renderLoop :: RenderFrame -> IO ()
-renderLoop rf@RenderFrame {rfps, renderer, eventsChan, computeChan, state} = do
+renderLoop rf@RenderFrame {rfps, renderer, eventsChan, computeChan, texture, state} = do
+  tick <- getTick
   fps' <- updateAndPrintFps "render" rfps
   events <- pollEvents
   if Quit `elem` events
@@ -49,9 +62,10 @@ renderLoop rf@RenderFrame {rfps, renderer, eventsChan, computeChan, state} = do
       m <- atomically $ do tryReadTChan computeChan
       let state' = fromMaybe state m
       sdlRenderClear renderer
-      sdlSetDrawColor renderer 0xFF 0xFF 0xFF 0xFF
+      sdlSetDrawColorBlack renderer
       drawShape renderer (computeStateToPoints state')
-      sdlSetDrawColor renderer 0x00 0x00 0x00 0x00
+      sdlSetDrawColorWhite renderer
+      sdlRenderTexture renderer texture (animationAtlasPosition tick) (sdlFRect 300 300 64 64)
       sdlRenderPresent renderer
       renderLoop rf {rfps = fps', state = state'}
 
