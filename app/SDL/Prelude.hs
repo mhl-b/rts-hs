@@ -55,12 +55,18 @@ sdlRenderClear r = _renderer_clear r >>= handleCBoolErr
 sdlRenderPresent :: SDLRenderer -> IO ()
 sdlRenderPresent r = _renderer_present r >>= handleCBoolErr
 
-sdlPollEvent :: IO (Maybe SDLEvent)
-sdlPollEvent = alloca $ \ptr -> do
-  ok <- _poll_event ptr
-  if toBool ok
-    then Just <$> peek ptr
-    else return Nothing
+sdlPollEvents :: IO [SDLEvent]
+sdlPollEvents = alloca $ \ptr -> do
+  go ptr []
+  where
+    go ptr' evts = do
+      ok <- _poll_event ptr'
+      if toBool ok
+        then
+          peek ptr' >>= \evt -> case evt of
+            Other -> go ptr' evts
+            _ -> go ptr' (evt : evts)
+        else return evts
 
 type Tick = Word64
 

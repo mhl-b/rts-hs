@@ -2,6 +2,7 @@ module Main where
 
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Monad (unless)
 import Data.Maybe (fromMaybe)
 import SDL.FFI
 import SDL.Prelude
@@ -22,15 +23,6 @@ main = do
   _ <- forkOS $ computeLoop ComputeFrame {cfps = fps, eventsChan, computeChan, state = Triangle}
   renderLoop RenderFrame {rfps = fps, renderer, eventsChan, computeChan, texture, state = Triangle}
   sdlQuit
-
-pollEvents :: IO [SDLEvent]
-pollEvents = go []
-  where
-    go evts = do
-      m <- sdlPollEvent
-      case m of
-        Nothing -> return evts
-        Just evt -> go (evt : evts)
 
 data RenderFrame = RenderFrame
   { rfps :: FPS,
@@ -54,11 +46,11 @@ renderLoop :: RenderFrame -> IO ()
 renderLoop rf@RenderFrame {rfps, renderer, eventsChan, computeChan, texture, state} = do
   tick <- getTick
   fps' <- updateAndPrintFps "render" rfps
-  events <- pollEvents
+  events <- sdlPollEvents
   if Quit `elem` events
     then return ()
     else do
-      atomically $ do writeTChan eventsChan events
+      unless (null events) $ atomically $ do writeTChan eventsChan events
       m <- atomically $ do tryReadTChan computeChan
       let state' = fromMaybe state m
       sdlRenderClear renderer
@@ -99,12 +91,10 @@ drainTChan chan = atomically $ drainTChan' chan []
   where
     drainTChan' :: TChan a -> [a] -> STM [a]
     drainTChan' ch acc = do
-      isEmpty <- isEmptyTChan ch
-      if isEmpty
-        then return (reverse acc)
-        else do
-          item <- readTChan ch
-          drainTChan' ch (item : acc)
+      m <- tryReadTChan ch
+      case m of
+        Nothing -> return acc
+        Just item -> drainTChan' ch (item : acc)
 
 computeLoop :: ComputeFrame -> IO ()
 computeLoop cf@ComputeFrame {cfps, eventsChan, computeChan, state} = do
