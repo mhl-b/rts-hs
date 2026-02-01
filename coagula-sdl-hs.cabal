@@ -65,36 +65,51 @@ executable coagula-sdl-hs
     other-modules:
         SDL.Prelude
         SDL.FFI
+        Vec
+        AppIO
+        Draw
 
     default-extensions:
         DuplicateRecordFields,
         DeriveGeneric,
-        DeriveFunctor
+        DeriveFunctor,
+        DeriveFoldable,
+        DeriveTraversable,
+        OverloadedRecordDot,
+        RecordWildCards,
+        OverloadedLists
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions:
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.0.0,
-        stm ^>=2.5.3.1
+        base ^>=4.21.0.0,
+        stm ^>=2.5.3.1,
+        containers ^>= 0.8
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
-    data-files: data/images/*.png
+    data-files:
+        data/images/*.png,
+        data/font/*.ttf
 
     include-dirs:
 
     includes:
-        SDL3/SDL.h
+        SDL3/SDL.h,
+        SDL3_ttf/SDL_ttf.h
 
     extra-lib-dirs:
+        /usr/local/lib
 
     extra-libraries-static:
+        /usr/local/lib
 
     extra-libraries:
-        SDL3
+        SDL3,
+        SDL3_ttf
 
     ghc-options: -optl-W -threaded
 
@@ -125,5 +140,5 @@ test-suite coagula-sdl-hs-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.18.0.0,
+        base ^>=4.21.0.0,
         coagula-sdl-hs

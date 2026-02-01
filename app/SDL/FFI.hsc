@@ -2,6 +2,7 @@
 
 module SDL.FFI where
 
+import Vec
 import Data.Word
 import Foreign
 import Foreign.C
@@ -9,38 +10,29 @@ import Foreign.C.ConstPtr
 
 #include "SDL3/SDL.h"
 
-initFlags :: CUInt
-initFlags = foldr (.|.) 0 [(#const SDL_INIT_VIDEO), (#const SDL_INIT_AUDIO), (#const SDL_INIT_EVENTS)]
+type RawPtr = Ptr ()
 
-foreign import capi "SDL3/SDL.h SDL_Init" _init :: CUInt -> IO CBool
+type SDLWindow = RawPtr
 
-foreign import capi "SDL3/SDL.h SDL_Quit" _quit :: IO ()
+type SDLWindowFlags = CULong
 
-foreign import capi "SDL3/SDL.h SDL_GetError" _error :: IO (ConstPtr CChar)
+type SDLRenderer = RawPtr
 
-data Raw
+type SDLFPoint = V2 CFloat
 
-type SDLWindow = Ptr Raw
+type SDLFRect = V4 CFloat
 
-type SDLWindowFlags = Word64
+type SDLSurface = RawPtr
 
-type SDLRenderer = Ptr Raw
+type SDLTexture = RawPtr
 
-foreign import capi "SDL3/SDL.h SDL_CreateWindow" _create_window :: ConstPtr CChar -> CInt -> CInt -> CULong -> IO SDLWindow
+type SDLTextEngine = RawPtr
 
-foreign import capi "SDL3/SDL.h SDL_GetRenderer" _get_renderer :: SDLWindow -> IO SDLRenderer
+type SDLFont = RawPtr
 
-foreign import capi "SDL3/SDL.h SDL_CreateRenderer" _create_renderer :: SDLWindow -> ConstPtr CChar -> IO SDLRenderer
-
-foreign import capi "SDL3/SDL.h SDL_SetRenderVSync" _set_renderer_vsync :: SDLRenderer -> CInt -> IO CBool
-
-foreign import capi "SDL3/SDL.h SDL_RenderClear" _renderer_clear :: SDLRenderer -> IO CBool
-
-foreign import capi "SDL3/SDL.h SDL_RenderPresent" _renderer_present :: SDLRenderer -> IO CBool
+type SDLText = RawPtr
 
 data SDLEvent = KeyDown | KeyUp | MouseUp | MouseDown | Quit | Other deriving (Eq, Show)
-
-foreign import capi "SDL3/SDL.h SDL_PollEvent" _poll_event :: Ptr SDLEvent -> IO CBool
 
 instance Storable SDLEvent where
     sizeOf _ = (#size SDL_Event)
@@ -56,46 +48,80 @@ instance Storable SDLEvent where
 
     poke _ _ = undefined
 
-foreign import capi "SDL3/SDL.h SDL_GetTicks" _get_ticks :: IO CULLong
+initFlags :: CUInt
+initFlags = (#const SDL_INIT_VIDEO) .|. (#const SDL_INIT_AUDIO) .|. (#const SDL_INIT_EVENTS)
 
-foreign import capi "SDL3/SDL.h SDL_GetTicksNS" _get_ticks_ns :: IO CULLong
+foreign import capi "SDL3/SDL.h SDL_Init"
+  _init :: CUInt -> IO CBool
 
-foreign import capi "SDL3/SDL.h SDL_RenderLine" _render_line :: SDLRenderer -> CFloat -> CFloat -> CFloat -> CFloat -> IO CBool
+foreign import capi "SDL3/SDL.h SDL_Quit"
+  _quit :: IO ()
 
-foreign import capi "SDL3/SDL.h SDL_SetRenderDrawColor" _set_render_draw_color :: SDLRenderer -> CChar -> CChar -> CChar -> CChar -> IO CBool
+foreign import capi "SDL3/SDL.h SDL_GetError"
+  _error :: IO (ConstPtr CChar)
 
-type SDLSurface = Ptr Raw
+foreign import capi "SDL3/SDL.h SDL_CreateWindow"
+  _create_window :: ConstPtr CChar -> CInt -> CInt -> CULong -> IO SDLWindow
 
-foreign import capi "SDL3/SDL.h SDL_LoadPNG" _load_png :: ConstPtr CChar -> IO SDLSurface
+foreign import capi "SDL3/SDL.h SDL_GetRenderer"
+  _get_renderer :: SDLWindow -> IO SDLRenderer
 
-type SDLTexture = Ptr Raw
+foreign import capi "SDL3/SDL.h SDL_CreateRenderer"
+  _create_renderer :: SDLWindow -> ConstPtr CChar -> IO SDLRenderer
 
-foreign import capi "SDL3/SDL.h SDL_CreateTextureFromSurface" _surface_to_texture :: SDLRenderer -> SDLSurface -> IO SDLTexture
+foreign import capi "SDL3/SDL.h SDL_SetRenderVSync"
+  _set_renderer_vsync :: SDLRenderer -> CInt -> IO CBool
 
-foreign import capi "SDL3/SDL.h SDL_DestroySurface" _destroy_surface :: SDLSurface -> IO ()
+foreign import capi "SDL3/SDL.h SDL_RenderClear"
+  _renderer_clear :: SDLRenderer -> IO CBool
 
-data SDLFRect = SDLFRect
-  { x :: CFloat
-  , y :: CFloat
-  , w :: CFloat
-  , h :: CFloat
-  } deriving (Show, Eq)
+foreign import capi "SDL3/SDL.h SDL_RenderPresent"
+  _renderer_present :: SDLRenderer -> IO CBool
 
-instance Storable SDLFRect where
-  sizeOf _ = #{size SDL_FRect}
-  alignment _ = #{alignment SDL_FRect}
+foreign import capi "SDL3/SDL.h SDL_PollEvent"
+  _poll_event :: Ptr SDLEvent -> IO CBool
 
-  peek ptr = do
-    x <- #{peek SDL_FRect, x} ptr
-    y <- #{peek SDL_FRect, y} ptr
-    w <- #{peek SDL_FRect, w} ptr
-    h <- #{peek SDL_FRect, h} ptr
-    return $ SDLFRect x y w h
+foreign import capi "SDL3/SDL.h SDL_GetTicks"
+  _get_ticks :: IO CULLong
 
-  poke ptr (SDLFRect x y w h) = do
-    #{poke SDL_FRect, x} ptr x
-    #{poke SDL_FRect, y} ptr y
-    #{poke SDL_FRect, w} ptr w
-    #{poke SDL_FRect, h} ptr h
+foreign import capi "SDL3/SDL.h SDL_GetTicksNS"
+  _get_ticks_ns :: IO CULLong
 
-foreign import capi "SDL3/SDL.h SDL_RenderTexture" _render_texture :: SDLRenderer -> SDLTexture -> ConstPtr SDLFRect -> ConstPtr SDLFRect -> IO CBool
+foreign import capi "SDL3/SDL.h SDL_RenderLine"
+  _render_line :: SDLRenderer -> CFloat -> CFloat -> CFloat -> CFloat -> IO CBool
+
+foreign import capi "SDL3/SDL.h SDL_SetRenderDrawColor"
+  _set_render_draw_color :: SDLRenderer -> CChar -> CChar -> CChar -> CChar -> IO CBool
+
+foreign import capi "SDL3/SDL.h SDL_LoadPNG"
+  _load_png :: ConstPtr CChar -> IO SDLSurface
+
+foreign import capi "SDL3/SDL.h SDL_CreateTextureFromSurface"
+  _surface_to_texture :: SDLRenderer -> SDLSurface -> IO SDLTexture
+
+foreign import capi "SDL3/SDL.h SDL_DestroySurface"
+  _destroy_surface :: SDLSurface -> IO ()
+
+foreign import capi "SDL3/SDL.h SDL_RenderTexture"
+  _render_texture :: SDLRenderer -> SDLTexture -> ConstPtr SDLFRect -> ConstPtr SDLFRect -> IO CBool
+
+foreign import capi "SDL3/SDL.h SDL_DestroyTexture"
+  _destroy_texture :: SDLTexture -> IO ()
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_Init"
+  _ttf_init :: IO CBool
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_CreateRendererTextEngine"
+  _create_text_engine :: SDLRenderer -> IO SDLTextEngine
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_OpenFont"
+  _open_font :: ConstPtr CChar -> CFloat -> IO SDLFont
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_CreateText"
+  _create_text :: SDLTextEngine -> SDLFont -> ConstPtr CChar -> CSize -> IO SDLText
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_DestroyText"
+  _destroy_text :: SDLText -> IO ()
+
+foreign import capi "SDL3_ttf/SDL_ttf.h TTF_DrawRendererText"
+  _render_text :: SDLText -> CFloat -> CFloat -> IO CBool
