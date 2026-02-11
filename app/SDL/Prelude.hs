@@ -77,9 +77,11 @@ sdlPollEvents evts = alloca $ \ptr -> do
             _ -> go ptr' (evt : evts')
         else return evts'
 
-type Tick = Word64
+type SDLTick = Word64
 
-sdlTick :: IO Tick
+type SDLDuration = Word64
+
+sdlTick :: IO SDLTick
 sdlTick = fromIntegral <$> _get_ticks_ns
 
 sdlSetDrawColorRGB :: SDLRenderer -> RGB -> IO ()

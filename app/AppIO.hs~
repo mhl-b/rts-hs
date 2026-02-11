@@ -1,0 +1,32 @@
+module AppIO where
+
+import SDL.FFI
+import SDL.Prelude
+import Video
+
+data AppIO = AppIO
+  { video :: Video,
+    input :: Input
+  }
+
+data Input = Input
+
+initIO :: IO AppIO
+initIO = do
+  sdlInit
+  sdlTTFInit
+  video <- initVideo
+  let app = AppIO {video, input = Input}
+  renderLoop app
+
+readEvents :: [SDLEvent] -> IO [SDLEvent]
+readEvents evts = filter (/= Other) <$> sdlPollEvents evts
+
+renderLoop :: AppIO -> IO AppIO
+renderLoop app = do
+  _ <- sdlTick
+  evts <- readEvents []
+  if Quit `elem` evts
+    then return app
+    else do
+      renderLoop app

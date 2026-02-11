@@ -1,0 +1,34 @@
+module Vec where
+
+import Foreign
+
+data I32x2 = I32x2 {-# UNPACK #-} !Int32 {-# UNPACK #-} !Int32
+  deriving (Eq, Show)
+
+data F32x2 = F32x2 {-# UNPACK #-} !Float {-# UNPACK #-} !Float
+  deriving (Eq, Show)
+
+data F32x4
+  = F32x4
+      {-# UNPACK #-} !Float
+      {-# UNPACK #-} !Float
+      {-# UNPACK #-} !Float
+      {-# UNPACK #-} !Float
+
+instance Storable F32x4 where
+  sizeOf _ = 4 * sizeOf (undefined :: F32x4)
+
+  alignment _ = alignment (undefined :: F32x4)
+
+  peek ptr = do
+    a <- peekElemOff (castPtr ptr) 0
+    b <- peekElemOff (castPtr ptr) 1
+    c <- peekElemOff (castPtr ptr) 2
+    d <- peekElemOff (castPtr ptr) 3
+    return (F32x4 a b c d)
+
+  poke ptr (F32x4 a b c d) = do
+    pokeElemOff (castPtr ptr) 0 a
+    pokeElemOff (castPtr ptr) 1 b
+    pokeElemOff (castPtr ptr) 2 c
+    pokeElemOff (castPtr ptr) 3 d

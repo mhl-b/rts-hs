@@ -67,7 +67,8 @@ executable coagula-sdl-hs
         SDL.FFI
         Vec
         AppIO
-        Draw
+        Video
+        Consts
 
     default-extensions:
         DuplicateRecordFields,
