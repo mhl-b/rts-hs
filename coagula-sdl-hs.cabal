@@ -68,7 +68,7 @@ executable coagula-sdl-hs
         Vec
         AppIO
         Video
-        Consts
+        Maf
 
     default-extensions:
         DuplicateRecordFields,

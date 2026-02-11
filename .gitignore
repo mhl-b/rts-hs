@@ -1,3 +1,5 @@
+*.xcf
+
 dist
 dist-*
 cabal-dev

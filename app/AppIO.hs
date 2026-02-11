@@ -36,8 +36,8 @@ renderLoop app = do
     else do
       threadDelay 20_000
       sdlRenderClear app.video.imageRenderer.renderer
-      let s = nanoSecToFloatSec ntick
-      let frame = frameNumGolden3 0.2 0 s
+      let s = tickToSec ntick
+      let frame = frameNumGolden3 0.1 0 s
       printf "tick: %d s: %f frame: %f\n" ntick s frame
       ir <- renderFromCachedAtlasById app.video.imageRenderer ZlukAtlas (V2 frame 0) (V2 100 100)
       sdlRenderPresent app.video.imageRenderer.renderer
