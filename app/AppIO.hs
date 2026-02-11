@@ -1,11 +1,11 @@
 module AppIO where
 
+import Control.Concurrent (threadDelay)
 import SDL.FFI
 import SDL.Prelude
+import Text.Printf (printf)
 import Vec
 import Video
-import Text.Printf (printf)
-import Control.Concurrent (threadDelay)
 
 data AppIO = AppIO
   { video :: Video,
@@ -36,8 +36,9 @@ renderLoop app = do
     else do
       threadDelay 20_000
       sdlRenderClear app.video.imageRenderer.renderer
-      let frame = frameNumGolden3 0 (nanoSecToFloatSec ntick)
-      printf "tick: %d frame : %f\n" ntick frame 
+      let s = nanoSecToFloatSec ntick
+      let frame = frameNumGolden3 0.2 0 s
+      printf "tick: %d s: %f frame: %f\n" ntick s frame
       ir <- renderFromCachedAtlasById app.video.imageRenderer ZlukAtlas (V2 frame 0) (V2 100 100)
       sdlRenderPresent app.video.imageRenderer.renderer
       let v' = app.video {imageRenderer = ir}

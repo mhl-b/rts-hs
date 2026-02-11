@@ -3,11 +3,11 @@ module Video where
 import Consts (phi)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Word
 import SDL.FFI
 import SDL.Prelude
 import Vec
 import Prelude hiding (lookup)
-import Data.Word
 
 data Video = Video
   { window :: SDLWindow,
@@ -116,21 +116,24 @@ renderFromCachedAtlasById ir atlasName atlasIdx dst = do
 floorf :: Float -> Float
 floorf = fromInteger . floor
 
-
 nanoSecToFloatSec :: Word64 -> Float
 nanoSecToFloatSec ns =
   let ms = fromIntegral (ns `div` 1_000_000)
-  in ms / 1000
+   in ms / 1000
+
+golden3FrameLen :: Float
+golden3FrameLen = 1 + 2 * phi + phi * phi
 
 -- f1 + f2 + f3 + f2 = f1 + 2 * phi * f1 + phi ^ 2 * f1
-frameNumGolden3 :: Float -> Float -> Float
-frameNumGolden3 toff tnow =
+frameNumGolden3 :: Float -> Float -> Float -> Float
+frameNumGolden3 f1 toff tnow =
   let t = tnow - toff
-      t' = t - floorf (t / 6.76) * 6.76
+      frameLen = golden3FrameLen * f1
+      t' = t - floorf (t / frameLen) * frameLen
    in go t'
   where
     go x
-      | x < 1 = 0
-      | x < phi = 1
-      | x < phi * phi = 2
+      | x < f1 = 0
+      | x < f1 + phi * f1 = 1
+      | x < f1 + phi * f1 + f1 * phi * phi = 2
       | otherwise = 1
